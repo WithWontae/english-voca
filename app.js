@@ -613,7 +613,7 @@ function checkCompletion() {
     if (set.words.every(w => w.known)) {
         const overlay = document.getElementById('completionOverlay');
         document.getElementById('completionMessage').textContent =
-            `강민 ~~ ${set.name} 세트 단어 학습 완료! 축하!`;
+            `아인 ~~ ${set.name} 세트 단어 학습 완료! 축하!`;
         overlay.style.display = 'flex';
     }
 }
