@@ -662,6 +662,30 @@ document.getElementById('nextBtn').addEventListener('click', () => {
     }
 });
 
+// TTS (단어 읽기)
+document.getElementById('ttsBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const word = AppState.currentSet.words[AppState.currentIndex].word;
+    speakWord(word);
+});
+
+function speakWord(text) {
+    if (!window.speechSynthesis) {
+        alert('이 브라우저는 음성 합성을 지원하지 않습니다.');
+        return;
+    }
+
+    // 숫자. (예: "1. ", "12. ") 제거
+    const cleanText = text.replace(/^\d+\.\s*/, '');
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9; // 약간 천천히
+
+    window.speechSynthesis.cancel(); // 이전 음성 중단
+    window.speechSynthesis.speak(utterance);
+}
+
 // 뒤로가기
 document.getElementById('studyBackBtn').addEventListener('click', () => {
     console.log('Study Back Clicked');
