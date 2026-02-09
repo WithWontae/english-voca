@@ -410,8 +410,8 @@ function updateCard() {
     document.getElementById('totalCount').textContent = set.words.length;
     document.getElementById('setName').textContent = set.name;
 
-    document.getElementById('cardWord').textContent = word.meaning;
-    document.getElementById('cardMeaning').textContent = word.word;
+    document.getElementById('cardWord').textContent = word.word;
+    document.getElementById('cardMeaning').textContent = word.meaning;
 
     // 커버 & 상태 버튼 초기화
     const cover = document.getElementById('meaningCover');
