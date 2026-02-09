@@ -17,8 +17,8 @@ const OCR_PROMPT = `이 이미지는 영어 단어 및 표현 학습 자료이�
 # 3단계: 구조화 (JSON 포맷)
 이미지의 데이터를 아래 규칙에 따라 JSON 배열로 변환하라.
 
-- **number**: 표의 번호 (문자열)
-- **word**: 영어 단어 또는 표현
+- **number**: 모든 데이터에 대해 "1"로 설정하라. (이미지 하나를 하나의 세트로 처리)
+- **word**: "번호. 영어단어" 형식으로 작성하라. (예: "1. countershading", "2. phrase")
 - **meaning**: 한글 뜻 전체. 아래의 우선순위로 구성하라:
   1. 핵심 뜻 (한자 포함)
   2. 괄호 안의 설명이나 보충 정보 (그대로 유지)
@@ -26,7 +26,7 @@ const OCR_PROMPT = `이 이미지는 영어 단어 및 표현 학습 자료이�
 
 # 출력 규칙
 - 오직 JSON 배열만 출력하라. (설명, 마크다운 코드 블록 등 일체 제외)
-- 형식: [{"number":"1","word":"countershading","meaning":"색대칭 (햇빛에 노출된 부분은 어두운 색, 그늘진 부분은 밝은 색이 되는 현상)"}, ...]`;
+- 형식: [{"number":"1","word":"1. countershading","meaning":"색대칭 (햇빛에 노출된 부분은 어두운 색, 그늘진 부분은 밝은 색이 되는 현상)"}, ...]`;
 
 export default async function handler(req, res) {
   // CORS 헤더
