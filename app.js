@@ -448,6 +448,9 @@ function updateCard() {
         statusBtn.className = 'btn-status learning';
         statusBtn.textContent = '학습중';
     }
+
+    // Auto-TTS: 카드가 보일 때 자동으로 단어 읽기
+    speakWord(word.word);
 }
 
 // 드래그로 뜻 커버 열기/닫기
