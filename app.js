@@ -4,7 +4,12 @@ const AppState = {
     currentSet: null,
     currentSetIndex: null,
     currentIndex: 0,
-    isInitialLoaded: false // 데이터 로드 여부를 확인하는 플래그
+    wordSets: [],
+    currentSet: null,
+    currentSetIndex: null,
+    currentIndex: 0,
+    isInitialLoaded: false, // 데이터 로드 여부를 확인하는 플래그
+    isReviewMode: false // 복습 모드 여부
 };
 
 // 초기화 로직
@@ -389,10 +394,27 @@ function saveSet(setIdx) {
 }
 
 // 학습 시작
+// 학습 시작
 function startStudy(setIndex) {
-    AppState.currentSet = AppState.wordSets[setIndex];
+    const set = AppState.wordSets[setIndex];
+
+    // 이미 완료된 세트인지 확인 (모든 단어가 known 상태)
+    const isCompleted = set.words.every(w => w.known);
+
+    if (isCompleted) {
+        // 완료된 세트 다시 시작 시 초기화
+        if (confirm('이미 완료한 세트입니다. 처음부터 다시 학습하시겠습니까?')) {
+            set.words.forEach(w => w.known = false);
+            saveData();
+        } else {
+            return; // 취소 시 학습 시작 안 함
+        }
+    }
+
+    AppState.currentSet = set;
     AppState.currentSetIndex = setIndex;
     AppState.currentIndex = 0;
+    AppState.isReviewMode = false; // 항상 전체 모드로 시작
 
     document.getElementById('completionOverlay').style.display = 'none';
     showScreen('studyScreen');
@@ -563,59 +585,150 @@ function updateCard() {
         const threshold = card.offsetWidth * 0.25;
         const words = AppState.currentSet.words;
 
-        if (deltaX < -threshold && AppState.currentIndex < words.length - 1) {
+        if (deltaX < -threshold) {
             // 왼쪽 스와이프 → 다음
-            card.style.transition = 'transform 0.2s, opacity 0.2s';
-            card.style.transform = 'translateX(-100%)';
-            card.style.opacity = '0';
-            setTimeout(() => {
-                AppState.currentIndex++;
-                updateCard();
-                card.style.transition = 'none';
-                card.style.transform = 'translateX(100%)';
-                requestAnimationFrame(() => {
-                    card.style.transition = 'transform 0.2s, opacity 0.2s';
-                    card.style.transform = 'translateX(0)';
-                    card.style.opacity = '1';
-                });
-            }, 200);
-        } else if (deltaX > threshold && AppState.currentIndex > 0) {
+            navigateNext();
+        } else if (deltaX > threshold) {
             // 오른쪽 스와이프 → 이전
-            card.style.transition = 'transform 0.2s, opacity 0.2s';
-            card.style.transform = 'translateX(100%)';
-            card.style.opacity = '0';
-            setTimeout(() => {
-                AppState.currentIndex--;
-                updateCard();
-                card.style.transition = 'none';
-                card.style.transform = 'translateX(-100%)';
-                requestAnimationFrame(() => {
-                    card.style.transition = 'transform 0.2s, opacity 0.2s';
-                    card.style.transform = 'translateX(0)';
-                    card.style.opacity = '1';
-                });
-            }, 200);
+            navigatePrev();
         } else {
             // 스냅백
-            card.style.transition = 'transform 0.2s, opacity 0.2s';
-            card.style.transform = 'translateX(0)';
-            card.style.opacity = '1';
+            resetCardPosition();
         }
 
         isSwiping = false;
         directionLocked = false;
     });
+
+    function resetCardPosition() {
+        card.style.transition = 'transform 0.2s, opacity 0.2s';
+        card.style.transform = 'translateX(0)';
+        card.style.opacity = '1';
+    }
 })();
 
+function navigateNext() {
+    const card = document.getElementById('flashCard');
+    const set = AppState.currentSet;
+    const total = set.words.length;
+    let nextIndex = -1;
+
+    if (!AppState.isReviewMode) {
+        // 1단계: 전체 학습 모드 (순차 진행)
+        if (AppState.currentIndex < total - 1) {
+            nextIndex = AppState.currentIndex + 1;
+        } else {
+            // 마지막 카드 도달
+            checkCompletionAndEnterReview();
+            return;
+        }
+    } else {
+        // 2단계: 복습 모드 (모르는 단어만 순환)
+        // 현재 위치 다음부터 찾기
+        for (let i = 1; i < total; i++) {
+            const idx = (AppState.currentIndex + i) % total;
+            if (!set.words[idx].known) {
+                nextIndex = idx;
+                break;
+            }
+        }
+
+        if (nextIndex === -1) {
+            // 모르는 단어가 없음 -> 완료
+            checkCompletion();
+            return;
+        }
+    }
+
+    if (nextIndex !== -1) {
+        animateCardChange(card, 'next', nextIndex);
+    }
+}
+
+function navigatePrev() {
+    const card = document.getElementById('flashCard');
+    const set = AppState.currentSet;
+    const total = set.words.length;
+    let prevIndex = -1;
+
+    if (!AppState.isReviewMode) {
+        // 1단계: 전체 학습 모드
+        if (AppState.currentIndex > 0) {
+            prevIndex = AppState.currentIndex - 1;
+        }
+    } else {
+        // 2단계: 복습 모드
+        for (let i = 1; i < total; i++) {
+            const idx = (AppState.currentIndex - i + total) % total;
+            if (!set.words[idx].known) {
+                prevIndex = idx;
+                break;
+            }
+        }
+    }
+
+    if (prevIndex !== -1) {
+        animateCardChange(card, 'prev', prevIndex);
+    }
+}
+
+function animateCardChange(card, direction, newIndex) {
+    const translateX = direction === 'next' ? '-100%' : '100%';
+
+    card.style.transition = 'transform 0.2s, opacity 0.2s';
+    card.style.transform = `translateX(${translateX})`;
+    card.style.opacity = '0';
+
+    setTimeout(() => {
+        AppState.currentIndex = newIndex;
+        updateCard();
+        card.style.transition = 'none';
+        card.style.transform = direction === 'next' ? 'translateX(100%)' : 'translateX(-100%)';
+
+        requestAnimationFrame(() => {
+            card.style.transition = 'transform 0.2s, opacity 0.2s';
+            card.style.transform = 'translateX(0)';
+            card.style.opacity = '1';
+        });
+    }, 200);
+}
+
+function checkCompletionAndEnterReview() {
+    // 마지막 카드에서 다음으로 넘어갈 때 호출됨
+    const set = AppState.currentSet;
+
+    // 1. 모든 단어를 아는지 확인
+    if (set.words.every(w => w.known)) {
+        showCompletion();
+        return;
+    }
+
+    // 2. 모르는 단어가 있으면 복습 모드 진입
+    if (!AppState.isReviewMode) {
+        AppState.isReviewMode = true;
+        alert('모르는 단어만 복습합니다!');
+
+        // 첫 번째 모르는 단어로 이동
+        navigateNext();
+    }
+}
+
+
 // 세트 학습 완료 체크
+// 세트 학습 완료 체크 (수동 호출용이 아닌 내부 로직용)
 function checkCompletion() {
     const set = AppState.currentSet;
     if (set.words.every(w => w.known)) {
-        const overlay = document.getElementById('completionOverlay');
-        document.getElementById('completionMessage').textContent =
-            `아인 ~~ ${set.name} 세트 단어 학습 완료! 축하!`;
-        overlay.style.display = 'flex';
+        showCompletion();
     }
+}
+
+function showCompletion() {
+    const set = AppState.currentSet;
+    const overlay = document.getElementById('completionOverlay');
+    document.getElementById('completionMessage').textContent =
+        `아인 ~~ ${set.name} 세트 단어 학습 완료! 축하!`;
+    overlay.style.display = 'flex';
 }
 
 // 완료 화면 버튼
@@ -648,19 +761,8 @@ document.getElementById('backToMenuBtn').addEventListener('click', () => {
 });
 
 // 이전/다음
-document.getElementById('prevBtn').addEventListener('click', () => {
-    if (AppState.currentIndex > 0) {
-        AppState.currentIndex--;
-        updateCard();
-    }
-});
-
-document.getElementById('nextBtn').addEventListener('click', () => {
-    if (AppState.currentIndex < AppState.currentSet.words.length - 1) {
-        AppState.currentIndex++;
-        updateCard();
-    }
-});
+document.getElementById('prevBtn').addEventListener('click', navigatePrev);
+document.getElementById('nextBtn').addEventListener('click', navigateNext);
 
 // TTS (단어 읽기)
 document.getElementById('ttsBtn').addEventListener('click', (e) => {
